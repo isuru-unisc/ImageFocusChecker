@@ -60,24 +60,18 @@ def load_image(uploaded_file):
 
 def create_focus_map(gray):
 
-    gx = cv2.Sobel(
+    # Laplacian response
+    lap = cv2.Laplacian(
         gray,
-        cv2.CV_64F,
-        1,
-        0,
-        ksize=3
+        cv2.CV_64F
     )
 
-    gy = cv2.Sobel(
-        gray,
-        cv2.CV_64F,
-        0,
-        1,
-        ksize=3
-    )
+    lap = np.abs(lap)
 
-    focus_map = np.sqrt(
-        gx**2 + gy**2
+    # Average focus within local regions
+    focus_map = cv2.blur(
+        lap,
+        (51, 51)
     )
 
     focus_map = cv2.normalize(
@@ -90,12 +84,6 @@ def create_focus_map(gray):
 
     focus_map = focus_map.astype(
         np.uint8
-    )
-
-    focus_map = cv2.GaussianBlur(
-        focus_map,
-        (15, 15),
-        0
     )
 
     return focus_map
