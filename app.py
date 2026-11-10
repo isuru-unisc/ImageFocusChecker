@@ -55,7 +55,7 @@ def load_image(uploaded_file):
 
 
 # --------------------------------------------------
-# FOCUS HEATMAP
+# FOCUS MAP
 # --------------------------------------------------
 
 def create_focus_map(gray):
@@ -67,6 +67,7 @@ def create_focus_map(gray):
 
     lap = np.abs(lap)
 
+    # Blur to create larger focus regions
     focus_map = cv2.blur(
         lap,
         (51, 51)
@@ -125,19 +126,11 @@ def find_sharpest_region(rgb, gray):
 
     h, w = gray.shape
 
-    box_size = int(
-        min(h, w) * 0.20
-    )
+    box_size = int(min(h, w) * 0.20)
 
-    box_size = max(
-        box_size,
-        150
-    )
+    box_size = max(box_size, 150)
 
-    step = max(
-        box_size // 5,
-        25
-    )
+    step = max(box_size // 5, 25)
 
     best_score = -1
     best_box = None
@@ -212,19 +205,19 @@ def find_sharpest_region(rgb, gray):
             3
         )
 
-    return output, best_score
+    return output
 
 
 # --------------------------------------------------
-# UI
+# USER INTERFACE
 # --------------------------------------------------
 
 st.title("📷 Sharpest Region Visualizer")
 
 st.markdown("""
-Take a new photo or upload an existing image.
+Upload one or more images and discover which area contains the highest concentration of visual detail.
 
-The system will:
+### The system will:
 
 ✅ Analyse image focus
 
@@ -232,31 +225,25 @@ The system will:
 
 ✅ Draw a green box around the sharpest region
 
-✅ Generate a focus heatmap
+✅ Generate a focus heatmap overlay
 
 ### How to read the results
 
-🟩 Green Box = Sharpest region detected
+🟩 **Green Box** = Sharpest region detected by the algorithm
 
-🟥 Red Areas = Strong visual detail
+🟥 **Red Areas** = Strong visual detail
 
-🟨 Yellow Areas = Moderate visual detail
+🟨 **Yellow Areas** = Moderate visual detail
 
-🟦 Blue Areas = Weak visual detail or blur
+🟦 **Blue Areas** = Weak visual detail or blur
 """)
 
 # --------------------------------------------------
-# INPUT OPTIONS
+# FILE UPLOAD
 # --------------------------------------------------
 
-st.subheader("Select an Image")
-
-camera_image = st.camera_input(
-    "📸 Take a photo"
-)
-
 uploaded_files = st.file_uploader(
-    "📂 Or upload existing photo(s)",
+    "📂 Select one or more images",
     type=[
         "jpg",
         "jpeg",
@@ -272,44 +259,18 @@ uploaded_files = st.file_uploader(
 )
 
 # --------------------------------------------------
-# BUILD COMBINED IMAGE LIST
-# --------------------------------------------------
-
-images_to_process = []
-
-if camera_image is not None:
-    images_to_process.append(
-        {
-            "name": "Captured Photo",
-            "file": camera_image
-        }
-    )
-
-if uploaded_files:
-    for uploaded_file in uploaded_files:
-        images_to_process.append(
-            {
-                "name": uploaded_file.name,
-                "file": uploaded_file
-            }
-        )
-
-# --------------------------------------------------
 # PROCESS IMAGES
 # --------------------------------------------------
 
-if images_to_process:
+if uploaded_files:
 
     progress = st.progress(0)
 
-    for index, image_data in enumerate(images_to_process):
-
-        file = image_data["file"]
-        filename = image_data["name"]
+    for index, uploaded_file in enumerate(uploaded_files):
 
         try:
 
-            rgb, gray = load_image(file)
+            rgb, gray = load_image(uploaded_file)
 
             focus_map = create_focus_map(gray)
 
@@ -322,16 +283,14 @@ if images_to_process:
                 heatmap
             )
 
-            boxed_image, sharpness_score = (
-                find_sharpest_region(
-                    rgb,
-                    gray
-                )
+            boxed_image = find_sharpest_region(
+                rgb,
+                gray
             )
 
             st.divider()
 
-            st.subheader(filename)
+            st.subheader(uploaded_file.name)
 
             col1, col2 = st.columns(2)
 
@@ -358,14 +317,11 @@ if images_to_process:
         except Exception as e:
 
             st.error(
-                f"Could not process {filename}: {e}"
+                f"Could not process {uploaded_file.name}: {e}"
             )
 
         progress.progress(
-            (index + 1)
-            / len(images_to_process)
+            (index + 1) / len(uploaded_files)
         )
 
-    st.success(
-        "Analysis complete."
-    )
+    st.success("Analysis complete.")
