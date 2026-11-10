@@ -60,7 +60,6 @@ def load_image(uploaded_file):
 
 def create_focus_map(gray):
 
-    # Laplacian response
     lap = cv2.Laplacian(
         gray,
         cv2.CV_64F
@@ -68,7 +67,6 @@ def create_focus_map(gray):
 
     lap = np.abs(lap)
 
-    # Average focus within local regions
     focus_map = cv2.blur(
         lap,
         (51, 51)
@@ -178,7 +176,7 @@ def find_sharpest_region(rgb, gray):
             )
 
             score = np.mean(
-                gx**2 + gy**2
+                gx ** 2 + gy ** 2
             )
 
             if score > best_score:
@@ -223,32 +221,42 @@ def find_sharpest_region(rgb, gray):
 
 st.title("📷 Sharpest Region Visualizer")
 
-st.markdown(
-"""
-Upload one or more photos.
+st.markdown("""
+Take a new photo or upload an existing image.
 
 The system will:
 
 ✅ Analyse image focus
 
-✅ Generate a focus heatmap
-
-✅ Detect the sharpest area in the photo
+✅ Detect the sharpest area
 
 ✅ Draw a green box around the sharpest region
 
-### Heatmap interpretation
+✅ Generate a focus heatmap
 
-🔴 Red = Highest focus
+### How to read the results
 
-🟡 Yellow = Moderate focus
+🟩 Green Box = Sharpest region detected
 
-🔵 Blue = Low focus / blurry
-"""
+🟥 Red Areas = Strong visual detail
+
+🟨 Yellow Areas = Moderate visual detail
+
+🟦 Blue Areas = Weak visual detail or blur
+""")
+
+# --------------------------------------------------
+# INPUT OPTIONS
+# --------------------------------------------------
+
+st.subheader("Select an Image")
+
+camera_image = st.camera_input(
+    "📸 Take a photo"
 )
 
 uploaded_files = st.file_uploader(
-    "Upload Images",
+    "📂 Or upload existing photo(s)",
     type=[
         "jpg",
         "jpeg",
@@ -264,14 +272,40 @@ uploaded_files = st.file_uploader(
 )
 
 # --------------------------------------------------
+# BUILD COMBINED IMAGE LIST
+# --------------------------------------------------
+
+images_to_process = []
+
+if camera_image is not None:
+    images_to_process.append(
+        {
+            "name": "Captured Photo",
+            "file": camera_image
+        }
+    )
+
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        images_to_process.append(
+            {
+                "name": uploaded_file.name,
+                "file": uploaded_file
+            }
+        )
+
+# --------------------------------------------------
 # PROCESS IMAGES
 # --------------------------------------------------
 
-if uploaded_files:
+if images_to_process:
 
     progress = st.progress(0)
 
-    for index, file in enumerate(uploaded_files):
+    for index, image_data in enumerate(images_to_process):
+
+        file = image_data["file"]
+        filename = image_data["name"]
 
         try:
 
@@ -297,7 +331,7 @@ if uploaded_files:
 
             st.divider()
 
-            st.subheader(file.name)
+            st.subheader(filename)
 
             col1, col2 = st.columns(2)
 
@@ -324,12 +358,12 @@ if uploaded_files:
         except Exception as e:
 
             st.error(
-                f"Could not process {file.name}: {e}"
+                f"Could not process {filename}: {e}"
             )
 
         progress.progress(
             (index + 1)
-            / len(uploaded_files)
+            / len(images_to_process)
         )
 
     st.success(
